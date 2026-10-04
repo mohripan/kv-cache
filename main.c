@@ -4,6 +4,28 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+void handle_client(int client_fd) {
+    char buf[1024];
+    while (1) {
+        ssize_t n = read(client_fd, buf, sizeof(buf) - 1);
+        if (n < 0) {
+            perror("read");
+            return;
+        }
+        if (n == 0) {
+            printf("client disconnected\n");
+            return;
+        }
+        buf[n] = '\0';
+        printf("got %zd bytes: %s", n, buf);
+
+        if (write(client_fd, buf, n) < 0) {
+            perror("write");
+            return;
+        }
+    }
+}
+
 int main(void) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
@@ -33,34 +55,15 @@ int main(void) {
     }
     printf("listening on 127.0.0.1:6379\n");
 
-    int client_fd = accept(fd, NULL, NULL);
-    if (client_fd < 0) {
-        perror("accept");
-        return 1;
-    }
-    printf("client connected, fd = %d\n", client_fd);
-
-    char buf[1024];
     while (1) {
-        ssize_t n = read(client_fd, buf, sizeof(buf) - 1);
-        if (n < 0) {
-            perror("read");
+        int client_fd = accept(fd, NULL, NULL);
+        if (client_fd < 0) {
+            perror("accept");
             return 1;
         }
-        if (n == 0) {
-            printf("client disconnected\n");
-            break;
-        }
-        buf[n] = '\0';
-        printf("got %zd bytes: %s", n, buf);
+        printf("client connected, fd = %d\n", client_fd);
 
-        if (write(client_fd, buf, n) < 0) {
-            perror("write");
-            return 1;
-        }
+        handle_client(client_fd);
+        close(client_fd);
     }
-    close(client_fd);
-    close(fd);
-
-    return 0;
 }
