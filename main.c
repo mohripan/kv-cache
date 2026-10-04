@@ -41,14 +41,24 @@ int main(void) {
     printf("client connected, fd = %d\n", client_fd);
 
     char buf[1024];
-    ssize_t n = read(client_fd, buf, sizeof(buf) - 1);
-    if (n < 0) {
-        perror("read");
-        return 1;
-    }
-    buf[n] = '\0';
-    printf("got %zd bytes: %s", n, buf);
+    while (1) {
+        ssize_t n = read(client_fd, buf, sizeof(buf) - 1);
+        if (n < 0) {
+            perror("read");
+            return 1;
+        }
+        if (n == 0) {
+            printf("client disconnected\n");
+            break;
+        }
+        buf[n] = '\0';
+        printf("got %zd bytes: %s", n, buf);
 
+        if (write(client_fd, buf, n) < 0) {
+            perror("write");
+            return 1;
+        }
+    }
     close(client_fd);
     close(fd);
 
